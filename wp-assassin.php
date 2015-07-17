@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
-Description: Protection from spam through your blog
+Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
 Version: 150717
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
