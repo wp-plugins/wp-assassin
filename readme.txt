@@ -8,11 +8,11 @@ Stable tag: 4.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Protection from spam through your blog
+Protection from spam through your blog || Защита от рассылки спама через ваш блог
 
 == Description ==
 
-Protection from spam through your blog
+Protection from spam through your blog || Защита от рассылки спама через ваш блог
 
 == Installation ==
 
@@ -33,5 +33,4 @@ After update deactivate and activate plugin
 --
 
 == A brief Markdown Example ==
-
-`<?php code(); // goes in backticks ?>`
+--
