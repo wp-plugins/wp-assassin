@@ -36,9 +36,9 @@ class wpa_main_class {
         $pref = str_replace($site, '', $files);
         $path = empty($pref)?ABSPATH:substr(ABSPATH, 0, -strlen($pref));
         $this->haccess = $path.'.htaccess';
-        $dirs['content'] = content_url().'/';
-        $dirs['admin'] = admin_url();
-        $dirs['includes'] = includes_url();
+        $dirs['content'] = str_replace($site.'/', '', content_url().'/');
+        $dirs['admin'] = str_replace($site.'/', '', admin_url());
+        $dirs['includes'] = str_replace($site.'/', '', includes_url());
         $this->folder_dir = $dirs;
     }
     
