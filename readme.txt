@@ -2,7 +2,7 @@
 Contributors: YurchenkoEV
 Donate link: http://yur4enko.com/
 Tags: spam, mail, protection
-Requires at least: 2.0
+Requires at least: 2.6
 Tested up to: 4.2.2
 Stable tag: 4.3
 License: GPLv2 or later

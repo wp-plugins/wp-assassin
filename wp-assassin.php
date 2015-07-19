@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150717
+Version: 150719
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -27,26 +27,22 @@ Author URI: http://yur4enko.com/
 
 class wpa_main_class {
 
-    private $pref;
-    private $site;
-    private $files;
     private $haccess;
     private $folder_dir;
             
     function __construct() {
-        $this->site = get_option('home');
-        $this->files = get_option('siteurl');
-        $this->pref = str_replace($this->site, '', $this->files);
-        $path = empty($this->pref)?ABSPATH:substr(ABSPATH, 0, -strlen($this->pref));
+        $site = get_option('home');
+        $files = get_option('siteurl');
+        $pref = str_replace($site, '', $files);
+        $path = empty($pref)?ABSPATH:substr(ABSPATH, 0, -strlen($pref));
         $this->haccess = $path.'.htaccess';
-        $dirs['content'] = '';
-        $dirs['admin'] = '';
-        $dirs['includes'] = '';
+        $dirs['content'] = content_url().'/';
+        $dirs['admin'] = admin_url();
+        $dirs['includes'] = includes_url();
         $this->folder_dir = $dirs;
     }
     
     protected function genRules($n, $link) {
-        //$adr = empty($this->pref) ? '' : substr($this->pref . '/', 1);
         $dirs = $this->folder_dir;
         $r['001'] = 'RewriteRule ^' . $dirs['content'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_001';
         $r['002'] = 'RewriteRule ^' . $dirs['includes'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_002';
@@ -137,14 +133,6 @@ RewriteEngine On #WP-Assassin
     function deactivations() {
         file_put_contents($this->haccess, $this->getcleancont());
     }
-    
-    //Установка значений
-    function write_urls($url_array) {
-        $dirs['content'] = str_replace($this->site, '', $url_array['content']).'/';
-        $dirs['admin'] = str_replace($this->site, '', $url_array['admin']);
-        $dirs['includes'] = str_replace($this->site, '', $url_array['includes']);
-        $this->folder_dir = $dirs;
-    }
 }
 
 function WPA_activations() {
@@ -158,11 +146,7 @@ function WPA_deactivations() {
 }
 
 function WPA_settings() {
-    $dirs['content'] = content_url();
-    $dirs['admin'] = admin_url();
-    $dirs['includes'] = includes_url();
     $class = New wpa_main_class();
-    $class->write_urls($dirs);
     $class->main_settings();
 }
 
