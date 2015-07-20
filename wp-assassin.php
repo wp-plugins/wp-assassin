@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150719
+Version: 150720
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -25,12 +25,14 @@ Author URI: http://yur4enko.com/
     Foundation, Inc.
 */
 
-class wpa_main_class {
+class wpa_assassin_class {
 
     private $haccess;
     private $folder_dir;
-            
-    function __construct() {
+    private static $_instance;
+
+    //CИСТЕМНЫЕ ФУНКЦИИ
+    private function __construct() {
         $site = get_option('home');
         $files = get_option('siteurl');
         $pref = str_replace($site, '', $files);
@@ -42,6 +44,24 @@ class wpa_main_class {
         $this->folder_dir = $dirs;
     }
     
+    public static function GetInstance() {
+        if (self::$_instance === null) {
+            self::$_instance = new self;
+        }
+        return self::$_instance;
+    }
+    
+    private function __clone() {
+        return NULL;
+    }
+    
+    private function __wakeup() {
+        return NULL;
+    }
+    //КОНЕЦ СИСТЕМНЫЕ ФУНКЦИИ
+    
+    //ЗАЩИЩЕННЫЕ ФУНКЦИИ
+    //получаем правила
     protected function genRules($n, $link) {
         $dirs = $this->folder_dir;
         $r['001'] = 'RewriteRule ^' . $dirs['content'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_001';
@@ -59,7 +79,8 @@ RewriteEngine On #WP-Assassin
         $ret .= '#WP-Assassin END';
         return $ret;
     }
-
+    
+    //получаем чистый список правил
     protected function getcleancont() {
         $f = fopen($this->haccess, r);
         $p = '';
@@ -73,13 +94,17 @@ RewriteEngine On #WP-Assassin
         fclose($f);
         return $p;
     }
-
+    
+    //Обновляем htaccess
     protected function updatesettings($r, $link) {
         file_put_contents($this->haccess, $this->getcleancont().$this->genRules($r, $link));
     }
-
-    //рабочие формы
-    function main_settings() {
+    //КОНЕЦ ЗАЩИЩЕННЫЕ ФУНКЦИИ
+    
+    //РАБОЧИЕ ФОРМЫ
+    static function main_settings() {
+        $wpa = self::GetInstance();
+        
         $setting = get_option('WPA_set');
         if (gettype($setting) != 'array') {
             $setting = array();
@@ -93,10 +118,10 @@ RewriteEngine On #WP-Assassin
             $link = filter_input(INPUT_POST, 'link');
             $setting['link'] = $link;
             update_option('WPA_set', $setting);
-            $this->updatesettings($inp, $link);
+            $wpa->updatesettings($inp, $link);
         }
 
-        $f = fopen($this->haccess, r);
+        $f = fopen($wpa->haccess, r);
         if ($f) {
             while (($str = fgets($f)) !== FALSE) {
                 $s = stristr($str, '#WP-Assassin_');
@@ -123,37 +148,31 @@ RewriteEngine On #WP-Assassin
        	</fieldset>
 	</form>';
     }
-
+    //КОНЕЦ РАБОЧИЕ ФОРМЫ
+    
+    //РАБОЧИЕ ФУНКЦИИ
     //Активация деактивация
-    function activations() {
-        $n = array();
-        file_put_contents($this->haccess, $this->genRules($n, ''), FILE_APPEND | LOCK_EX);
+    static function activations() {
+        $wpa = self::GetInstance();
+        file_put_contents($wpa->haccess, $wpa->genRules(array(), ''), FILE_APPEND | LOCK_EX);
     }
-
-    function deactivations() {
-        file_put_contents($this->haccess, $this->getcleancont());
+    
+    //Деактивация плагина
+    static function deactivations() {
+        $wpa = self::GetInstance();
+        file_put_contents($wpa->haccess, $wpa->getcleancont());
     }
+    //КОНЕЦ РАБОЧИЕ ФУНКЦИИ
+    
+    //ФУНКЦИИ НЕ ТРЕБУЮЩИЕ КОНСТРУТОРА
+    //Добавление пункта меню
+    static function add_menu(){
+        add_options_page('WP-Assassin', 'Assassin', 8, __FILE__, array('wpa_assassin_class','main_settings'));
+    }
+    //КОНЕЦ ФУНКЦИИ НЕ ТРЕБУЮЩИЕ КОНСТРУТОРА
 }
 
-function WPA_activations() {
-    $class = New wpa_main_class();
-    $class->activations();
-}
-
-function WPA_deactivations() {
-    $class = New wpa_main_class();
-    $class->deactivations();
-}
-
-function WPA_settings() {
-    $class = New wpa_main_class();
-    $class->main_settings();
-}
-
-function WPA_add_menu() {
-    add_options_page('WP-Assassin', 'Assassin', 8, __FILE__, 'WPA_settings');
-}
-
-add_action('admin_menu', 'WPA_add_menu');
-register_activation_hook( __FILE__, 'WPA_activations' );
-register_deactivation_hook( __FILE__, 'WPA_deactivations');
+register_activation_hook( __FILE__, array('wpa_assassin_class','activations'));
+register_deactivation_hook( __FILE__, array('wpa_assassin_class','deactivations'));
+add_action('admin_menu', array('wpa_assassin_class','add_menu'));
+//add_action( 'admin_notices', 'WPA_notise' );
