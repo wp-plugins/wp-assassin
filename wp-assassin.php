@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150720
+Version: 150721
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -99,6 +99,32 @@ RewriteEngine On #WP-Assassin
     protected function updatesettings($r, $link) {
         file_put_contents($this->haccess, $this->getcleancont().$this->genRules($r, $link));
     }
+    
+    //Валидация htaccess
+    protected function htaccesswrong() {
+        $f = fopen($this->haccess, r);
+        $dirs = $this->folder_dir;
+        if ($f) {
+            while (($str = fgets($f)) !== FALSE) {
+                if (stristr($str, '#WP-Assassin') != FALSE) {
+                    if ((stristr($str, '^/') != FALSE) or (stristr($str, '^h') != FALSE)) {
+                        return TRUE;
+                    }
+                    if ((stristr($str, '#WP-Assassin_001') != FALSE) and (stristr($str, $dirs['content']) === FALSE)) {
+                        return TRUE;
+                    }
+                    if ((stristr($str, '#WP-Assassin_002') != FALSE) and (stristr($str, $dirs['includes']) === FALSE)) {
+                        return TRUE;
+                    }
+                    if ((stristr($str, '#WP-Assassin_003') != FALSE) and (stristr($str, $dirs['admin']) === FALSE)) {
+                        return TRUE;
+                    }
+                }
+            }
+        }
+        fclose($f);
+        return FALSE;
+    }
     //КОНЕЦ ЗАЩИЩЕННЫЕ ФУНКЦИИ
     
     //РАБОЧИЕ ФОРМЫ
@@ -162,6 +188,21 @@ RewriteEngine On #WP-Assassin
         $wpa = self::GetInstance();
         file_put_contents($wpa->haccess, $wpa->getcleancont());
     }
+    
+    //Предупреждения в админ панели
+    static function notification() {
+        $tmp = filter_input(INPUT_POST, 'apply');
+        if (!empty($tmp)) {
+            return;
+        }
+        $wpa = self::GetInstance();
+        if ($wpa->htaccesswrong()){
+            echo '<div class="error"><a href="'
+                .admin_url('options-general.php?page=wp-assassin%2Fwp-assassin.php').
+                '">Необходимо обновить настройки! WP-Assassin</a></div>';
+        }
+    }
+
     //КОНЕЦ РАБОЧИЕ ФУНКЦИИ
     
     //ФУНКЦИИ НЕ ТРЕБУЮЩИЕ КОНСТРУТОРА
@@ -175,4 +216,4 @@ RewriteEngine On #WP-Assassin
 register_activation_hook( __FILE__, array('wpa_assassin_class','activations'));
 register_deactivation_hook( __FILE__, array('wpa_assassin_class','deactivations'));
 add_action('admin_menu', array('wpa_assassin_class','add_menu'));
-//add_action( 'admin_notices', 'WPA_notise' );
+add_action( 'admin_notices', array('wpa_assassin_class','notification'));
