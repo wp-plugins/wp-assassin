@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150721
+Version: 150722
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -210,10 +210,16 @@ RewriteEngine On #WP-Assassin
     static function add_menu(){
         add_options_page('WP-Assassin', 'Assassin', 8, __FILE__, array('wpa_assassin_class','main_settings'));
     }
+    
+    //Чистка при удалении
+    static function wpadelete(){
+        delete_option('WPA_set');
+    }
     //КОНЕЦ ФУНКЦИИ НЕ ТРЕБУЮЩИЕ КОНСТРУТОРА
 }
 
 register_activation_hook( __FILE__, array('wpa_assassin_class','activations'));
 register_deactivation_hook( __FILE__, array('wpa_assassin_class','deactivations'));
+register_uninstall_hook(__FILE__,array('wpa_assassin_class','wpadelete'));
 add_action('admin_menu', array('wpa_assassin_class','add_menu'));
 add_action( 'admin_notices', array('wpa_assassin_class','notification'));
