@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150722
+Version: 150727
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -61,6 +61,21 @@ class wpa_assassin_class {
     //КОНЕЦ СИСТЕМНЫЕ ФУНКЦИИ
     
     //ЗАЩИЩЕННЫЕ ФУНКЦИИ
+    //Получаем пользовательские правила
+    protected function getuserrules(){
+        $setting = get_option('WPA_set');
+        $userrules = $setting['userrules'];
+        $link = $setting['link'];
+        $ret = '';
+        if (empty($userrules[0])) {
+            return $ret;
+        }
+        foreach ($userrules as $value) {
+            $ret .= "RewriteRule ^".$value."/(.*).php$ ".$link." [R=301,L] #WP-Assassin_userrules \n";
+        }
+        return $ret;
+    }
+
     //получаем правила
     protected function genRules($n, $link) {
         $dirs = $this->folder_dir;
@@ -76,6 +91,7 @@ RewriteEngine On #WP-Assassin
 ';
             }
         }
+        $ret .= $this->getuserrules();
         $ret .= '#WP-Assassin END';
         return $ret;
     }
@@ -104,6 +120,7 @@ RewriteEngine On #WP-Assassin
     protected function htaccesswrong() {
         $f = fopen($this->haccess, r);
         $dirs = $this->folder_dir;
+        
         if ($f) {
             while (($str = fgets($f)) !== FALSE) {
                 if (stristr($str, '#WP-Assassin') != FALSE) {
@@ -142,7 +159,11 @@ RewriteEngine On #WP-Assassin
             $inp['002'] = filter_input(INPUT_POST, 'r2');
             $inp['003'] = filter_input(INPUT_POST, 'r3');
             $link = filter_input(INPUT_POST, 'link');
+            $userrules = filter_input(INPUT_POST, 'userrules');
+            $arrayofuserrules = explode('
+', $userrules);
             $setting['link'] = $link;
+            $setting['userrules'] = $arrayofuserrules;
             update_option('WPA_set', $setting);
             $wpa->updatesettings($inp, $link);
         }
@@ -163,12 +184,24 @@ RewriteEngine On #WP-Assassin
         if (empty($link)) {
             $link = 'http://localhost';
         }
+        if (!isset($userrules)){
+            $userrules = '';
+            $arrayofuserrules = $setting['userrules'];
+            $i = 0;
+            foreach ($arrayofuserrules as $value) {
+                $i++;
+                $userrules .=($i==1)?"".$value:"\n".$value;                
+            }
+        }
         echo '<h2>WP-Assassin защищает директории:</h2>
         <form method=POST>
         <fieldset class="options">
             <input type="checkbox" name="r1" value="001"' . $n['001'] . '>wp-content<br>
             <input type="checkbox" name="r2" value="002"' . $n['002'] . '>wp-includes<br>
             <input type="checkbox" name="r3" value="003"' . $n['003'] . '>wp-admin<br>
+            Ваши папки:<textarea name="userrules">'.$userrules.'</textarea><br>
+            <h5>*путь к папкам указывать от корня сайта, первый и последний слеш не указывать <br>
+            Пример: wp-content/cache</h5>
             Переадресовывать на: <input type="text" name="link" value="' . $link . '"><br>
             <p><input type="submit" value="Отправить" name="apply">
        	</fieldset>
