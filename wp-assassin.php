@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150727
+Version: 150730
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -29,6 +29,7 @@ class wpa_assassin_class {
 
     private $haccess;
     private $folder_dir;
+    private $settings;
     private static $_instance;
 
     //CИСТЕМНЫЕ ФУНКЦИИ
@@ -42,6 +43,7 @@ class wpa_assassin_class {
         $dirs['admin'] = str_replace($site.'/', '', admin_url());
         $dirs['includes'] = str_replace($site.'/', '', includes_url());
         $this->folder_dir = $dirs;
+        $this->settings = $this->readsettings();
     }
     
     public static function GetInstance() {
@@ -61,37 +63,40 @@ class wpa_assassin_class {
     //КОНЕЦ СИСТЕМНЫЕ ФУНКЦИИ
     
     //ЗАЩИЩЕННЫЕ ФУНКЦИИ
-    //Получаем пользовательские правила
-    protected function getuserrules(){
-        $setting = get_option('WPA_set');
-        $userrules = $setting['userrules'];
-        $link = $setting['link'];
-        $ret = '';
-        if (empty($userrules[0])) {
-            return $ret;
-        }
-        foreach ($userrules as $value) {
-            $ret .= "RewriteRule ^".$value."/(.*).php$ ".$link." [R=301,L] #WP-Assassin_userrules \n";
-        }
-        return $ret;
+    //Получаем нужную настройку
+    protected function readsettings(){
+        return get_option('WPA_set');
+    }
+
+    protected function getset($name){
+        $a = $this->settings;
+        return $a[$name];
     }
 
     //получаем правила
-    protected function genRules($n, $link) {
+    protected function genRules() {
+        $link = $this->getset('link');
         $dirs = $this->folder_dir;
-        $r['001'] = 'RewriteRule ^' . $dirs['content'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_001';
-        $r['002'] = 'RewriteRule ^' . $dirs['includes'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_002';
-        $r['003'] = 'RewriteRule ^' . $dirs['admin'].'(.*)/(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin_003';
+        $systemprotect = $this->getset('sysdirprotect');
+        $r['content'] = 'RewriteRule ^' . $dirs['content'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin';
+        $r['includes'] = 'RewriteRule ^' . $dirs['includes'].'(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin';
+        $r['admin'] = 'RewriteRule ^' . $dirs['admin'].'(.*)/(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin';
         $ret = '#WP-Assassin START
 RewriteEngine On #WP-Assassin
 ';
-        foreach ($n as $value) {
-            if (!empty($r[$value])) {
-                $ret .= $r[$value] . '
+        foreach ($systemprotect as $key => $value) {
+            if (!empty($value)) {
+                $ret .= $r[$key] . '
 ';
             }
         }
-        $ret .= $this->getuserrules();
+        $userrules = $this->getset('userrules');
+        foreach ($userrules as $value) {
+            if (!empty($value)){
+                $ret .= 'RewriteRule ^' . $value . '/(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin
+';
+            }
+        }
         $ret .= '#WP-Assassin END';
         return $ret;
     }
@@ -112,35 +117,31 @@ RewriteEngine On #WP-Assassin
     }
     
     //Обновляем htaccess
-    protected function updatesettings($r, $link) {
-        file_put_contents($this->haccess, $this->getcleancont().$this->genRules($r, $link));
+    protected function updatethaccess() {
+        file_put_contents($this->haccess, $this->getcleancont().$this->genRules());
     }
     
     //Валидация htaccess
     protected function htaccesswrong() {
+        $truerules = explode('
+', $this->genRules());
         $f = fopen($this->haccess, r);
-        $dirs = $this->folder_dir;
-        
-        if ($f) {
+        $line = 0;
+        if ($f){
             while (($str = fgets($f)) !== FALSE) {
                 if (stristr($str, '#WP-Assassin') != FALSE) {
-                    if ((stristr($str, '^/') != FALSE) or (stristr($str, '^h') != FALSE)) {
+                    if (strcmp(trim($str), trim($truerules[$line])) !== 0) {
                         return TRUE;
                     }
-                    if ((stristr($str, '#WP-Assassin_001') != FALSE) and (stristr($str, $dirs['content']) === FALSE)) {
-                        return TRUE;
-                    }
-                    if ((stristr($str, '#WP-Assassin_002') != FALSE) and (stristr($str, $dirs['includes']) === FALSE)) {
-                        return TRUE;
-                    }
-                    if ((stristr($str, '#WP-Assassin_003') != FALSE) and (stristr($str, $dirs['admin']) === FALSE)) {
-                        return TRUE;
-                    }
+                    $line++;
                 }
             }
         }
         fclose($f);
-        return FALSE;
+    }
+    
+    protected function checket($value){
+        return (empty($value))?'':' checked';
     }
     //КОНЕЦ ЗАЩИЩЕННЫЕ ФУНКЦИИ
     
@@ -148,38 +149,29 @@ RewriteEngine On #WP-Assassin
     static function main_settings() {
         $wpa = self::GetInstance();
         
-        $setting = get_option('WPA_set');
+        $setting = $wpa->settings; 
         if (gettype($setting) != 'array') {
             $setting = array();
         }
 
         $tmp = filter_input(INPUT_POST, 'apply');
         if (!empty($tmp)) {
-            $inp['001'] = filter_input(INPUT_POST, 'r1');
-            $inp['002'] = filter_input(INPUT_POST, 'r2');
-            $inp['003'] = filter_input(INPUT_POST, 'r3');
+            $inp['content'] = filter_input(INPUT_POST, 'r1');
+            $inp['includes'] = filter_input(INPUT_POST, 'r2');
+            $inp['admin'] = filter_input(INPUT_POST, 'r3');
             $link = filter_input(INPUT_POST, 'link');
             $userrules = filter_input(INPUT_POST, 'userrules');
             $arrayofuserrules = explode('
 ', $userrules);
             $setting['link'] = $link;
             $setting['userrules'] = $arrayofuserrules;
+            $setting['sysdirprotect'] = $inp; 
             update_option('WPA_set', $setting);
-            $wpa->updatesettings($inp, $link);
+            $wpa->settings = $wpa->readsettings();
+            $wpa->updatethaccess();
         }
-
-        $f = fopen($wpa->haccess, r);
-        if ($f) {
-            while (($str = fgets($f)) !== FALSE) {
-                $s = stristr($str, '#WP-Assassin_');
-                if (!empty($s)) {
-                    $id = trim(substr(stristr($s, '_'), 1));
-                    $n[$id] = ' checked';
-                }
-            }
-        }
-        fclose($f);
-
+        
+        $n = $wpa->getset('sysdirprotect');
         $link = $setting['link'];
         if (empty($link)) {
             $link = 'http://localhost';
@@ -196,9 +188,9 @@ RewriteEngine On #WP-Assassin
         echo '<h2>WP-Assassin защищает директории:</h2>
         <form method=POST>
         <fieldset class="options">
-            <input type="checkbox" name="r1" value="001"' . $n['001'] . '>wp-content<br>
-            <input type="checkbox" name="r2" value="002"' . $n['002'] . '>wp-includes<br>
-            <input type="checkbox" name="r3" value="003"' . $n['003'] . '>wp-admin<br>
+            <input type="checkbox" name="r1" value="001"' . $wpa->checket($n['content']) . '>wp-content<br>
+            <input type="checkbox" name="r2" value="002"' . $wpa->checket($n['includes']) . '>wp-includes<br>
+            <input type="checkbox" name="r3" value="003"' . $wpa->checket($n['admin']) . '>wp-admin<br>
             Ваши папки:<textarea name="userrules">'.$userrules.'</textarea><br>
             <h5>*путь к папкам указывать от корня сайта, первый и последний слеш не указывать <br>
             Пример: wp-content/cache</h5>
@@ -213,7 +205,7 @@ RewriteEngine On #WP-Assassin
     //Активация деактивация
     static function activations() {
         $wpa = self::GetInstance();
-        file_put_contents($wpa->haccess, $wpa->genRules(array(), ''), FILE_APPEND | LOCK_EX);
+        file_put_contents($wpa->haccess, $wpa->genRules(), FILE_APPEND | LOCK_EX);
     }
     
     //Деактивация плагина
