@@ -3,7 +3,7 @@
 Plugin Name: WP Assassin
 Plugin URI: http://azbuki.info/viewforum.php?f=30
 Description: Protection from spam through your blog || Защита от рассылки спама через ваш блог
-Version: 150730
+Version: 150808
 Author: Evgen Yurchenko
 Author URI: http://yur4enko.com/
 */
@@ -84,6 +84,9 @@ class wpa_assassin_class {
         $ret = '#WP-Assassin START
 RewriteEngine On #WP-Assassin
 ';
+        if (empty($systemprotect)) {
+            $systemprotect = array();
+        }
         foreach ($systemprotect as $key => $value) {
             if (!empty($value)) {
                 $ret .= $r[$key] . '
@@ -91,6 +94,9 @@ RewriteEngine On #WP-Assassin
             }
         }
         $userrules = $this->getset('userrules');
+        if (empty($userrules)) {
+            $userrules = Array();
+        }
         foreach ($userrules as $value) {
             if (!empty($value)){
                 $ret .= 'RewriteRule ^' . $value . '/(.*).php$ ' . $link . ' [R=301,L] #WP-Assassin
@@ -103,7 +109,7 @@ RewriteEngine On #WP-Assassin
     
     //получаем чистый список правил
     protected function getcleancont() {
-        $f = fopen($this->haccess, r);
+        $f = fopen($this->haccess, 'r');
         $p = '';
         if ($f) {
             while (($str = fgets($f)) !== FALSE) {
@@ -125,7 +131,7 @@ RewriteEngine On #WP-Assassin
     protected function htaccesswrong() {
         $truerules = explode('
 ', $this->genRules());
-        $f = fopen($this->haccess, r);
+        $f = fopen($this->haccess, 'r');
         $line = 0;
         if ($f){
             while (($str = fgets($f)) !== FALSE) {
@@ -172,13 +178,13 @@ RewriteEngine On #WP-Assassin
         }
         
         $n = $wpa->getset('sysdirprotect');
-        $link = $setting['link'];
+        $link = (array_key_exists('link', $setting))?$setting['link']:'http://localhost';
         if (empty($link)) {
             $link = 'http://localhost';
         }
         if (!isset($userrules)){
             $userrules = '';
-            $arrayofuserrules = $setting['userrules'];
+            $arrayofuserrules = (array_key_exists('userrules', $setting))?$setting['userrules']:array();
             $i = 0;
             foreach ($arrayofuserrules as $value) {
                 $i++;
@@ -233,7 +239,7 @@ RewriteEngine On #WP-Assassin
     //ФУНКЦИИ НЕ ТРЕБУЮЩИЕ КОНСТРУТОРА
     //Добавление пункта меню
     static function add_menu(){
-        add_options_page('WP-Assassin', 'Assassin', 8, __FILE__, array('wpa_assassin_class','main_settings'));
+        add_options_page('WP-Assassin', 'Assassin', 'activate_plugins', __FILE__, array('wpa_assassin_class','main_settings'));
     }
     
     //Чистка при удалении
